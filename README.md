@@ -1,22 +1,12 @@
 <div align="center">
-<pre>
-<code>
-     ░▒▓██████▓▒░    ░▒▓█▓▒░   ░▒▓█▓▒░ 
-    ░▒▓█▓▒░░▒▓█▓▒░░▒▓████▓▒░░▒▓████▓▒░ 
-    ░▒▓█▓▒░░▒▓█▓▒░   ░▒▓█▓▒░   ░▒▓█▓▒░ 
-     ░▒▓██████▓▒░    ░▒▓█▓▒░   ░▒▓█▓▒░ 
-    ░▒▓█▓▒░░▒▓█▓▒░   ░▒▓█▓▒░   ░▒▓█▓▒░ 
-    ░▒▓█▓▒░░▒▓█▓▒░   ░▒▓█▓▒░   ░▒▓█▓▒░ 
-     ░▒▓██████▓▒░    ░▒▓█▓▒░   ░▒▓█▓▒░ 
-</pre>
-</code>
-US811 automates the workload of profiling, surveying, and submission of pole restoration/installation
-</div>
 
+<picture>
+  <img src="/docs/811.jpeg" width="50%" height="50%">
+</picture>
 
-
-# Re-factoring/Re-writing an internal tool for a company that automates most of their employee's job
-# TODO:
+<h3>
+Re-factoring/Re-writing an internal tool for a company that automates most of their employee's job
+TODO:
     - [ ] Login automation to avoid getting the account disabled
 
 
