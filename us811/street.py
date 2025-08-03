@@ -19,7 +19,9 @@ county
 name: city
 """
 
-
+"""
+TODO: Fix reverse_geocode
+"""
 def reverse_geocode(gps: Pole) -> Metadata:
     base_url = "https://nominatim.openstreetmap.org/reverse"
     params = {"lat": gps["lat"], "lon": gps["lon"], "format": "json"}
