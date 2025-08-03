@@ -9,9 +9,10 @@
     An automation tool for surveying, profiling, and submitting Pole Restoration/Pole Installation work for US811
   </h3>
 
-  <p><strong>TODO:</strong></p>
-  <ul>
-    <li>[ ] Login automation to avoid getting the account disabled</li>
-  </ul>
-
 </div>
+
+<p><strong>TODO:</strong></p>
+<ul>
+    <li>[ ] Login automation to avoid getting the account disabled</li>
+</ul>
+
