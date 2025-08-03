@@ -8,11 +8,11 @@
   <h3>
     An automation tool for surveying, profiling, and submitting Pole Restoration/Pole Installation work for US811
   </h3>
-
 </div>
 
 <p><strong>TODO(Pole Restoration):</strong></p>
 <ul>
+    <li>[x] Parse csv file containing 3 columns, into TypedDict
     <li>[ ] Login automation to avoid getting the account disabled</li>
     <li>[ ] Given a gps coords, find the nearest street it belongs to
     <li>[ ] Given a street name/wayid/streetid, find the nearest intersection
