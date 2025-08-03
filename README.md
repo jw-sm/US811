@@ -6,7 +6,7 @@
   </picture>
 
   <h3>
-    Re-factoring/Re-writing an internal tool for a company that automates most of their employees' jobs
+    An automation tool for surveying, profiling, and submitting Pole Restoration/Pole Installation work for US811
   </h3>
 
   <p><strong>TODO:</strong></p>
