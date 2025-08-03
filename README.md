@@ -1,7 +1,7 @@
 <div align="center">
 
 <picture>
-  <img src="/docs/811.jpeg" width="50%" height="50%">
+  <img src="/docs/811.svg" width="50%" height="50%">
 </picture>
 
 <h3>
