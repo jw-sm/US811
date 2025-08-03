@@ -1,6 +1,7 @@
 <div align="center">
 
 <picture>
+  <source media="(prefers-color-scheme: light" srcset="/docs/811.svg)
   <img src="/docs/811.svg" width="50%" height="50%">
 </picture>
 
