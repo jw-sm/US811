@@ -1,4 +1,4 @@
-from helpers import Pole, parse_csv
+from helpers import Pole
 from typing import TypedDict
 import requests
 
@@ -10,35 +10,20 @@ class Metadata(TypedDict):
     city: str
 
 
-"""
-This will return a dictionary with the needed data for other usages 
-Needed data:
-street name
-osm_id (to get the intersecition using the OVERPASS API)
-county
-name: city
-"""
-
-"""
-TODO: Fix reverse_geocode
-"""
-def reverse_geocode(gps: Pole) -> Metadata:
+def reverse_geocode(gps: list[Pole]) -> list[Metadata]:
     base_url = "https://nominatim.openstreetmap.org/reverse"
-    params = {"lat": gps["lat"], "lon": gps["lon"], "format": "json"}
+    url_list = []
+    #TODO params loop then add to url list
+    #params = {"lat": gps["lat"], "lon": gps["lon"], "format": "json"}
     headers = {"User-Agent": "us811/v1"}
 
     response = requests.get(base_url, params=params, headers=headers)
     json = response.json()
-    print(json)
 
     pole_metadata: Metadata = {
         "osm_id": int(json["osm_id"]),
         "county": json["address"]["county"],
-        "city": json["address"]["road"],
+        "street_name": json["address"]["road"],
+        "city": json["address"]["municipality"],
     }
     return pole_metadata
-
-
-list_of_poles = parse_csv("../tests/test_data.csv")
-response = reverse_geocode(list_of_poles[0])
-print(response)
