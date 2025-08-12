@@ -1,7 +1,16 @@
-from helpers import Pole
+from helpers import Pole, parse_csv
 from typing import TypedDict
 import requests
+import asyncio
+import aiohttp
 
+
+class Intersections(TypedDict):
+    id: int
+    lat: float
+    lon: float
+    distance: float
+    street_count: int
 
 class Metadata(TypedDict):
     street_name: str
@@ -9,21 +18,29 @@ class Metadata(TypedDict):
     county: str
     city: str
 
+class OverpassError(Exception):
+    pass
 
-def reverse_geocode(gps: list[Pole]) -> list[Metadata]:
+
+async def fetch_metadata(session: aiohttp.ClientSession, coord: Pole) -> Metadata:
     base_url = "https://nominatim.openstreetmap.org/reverse"
-    url_list = []
-    #TODO params loop then add to url list
-    #params = {"lat": gps["lat"], "lon": gps["lon"], "format": "json"}
+    params = {"lat": coord["lat"], "lon": coord["lon"], "format": "json"}
+
+    async with session.get(base_url, params=params) as response:
+        data = await response.json()
+        
+        return {
+            "osm_id": int(data["osm_id"]),
+            "county": data["address"].get("county", ""),
+            "street_name": data["address"].get("road", "")
+        }
+
+async def reverse_geocode(coordinates: list[Pole]) -> list[Metadata]:
     headers = {"User-Agent": "us811/v1"}
 
-    response = requests.get(base_url, params=params, headers=headers)
-    json = response.json()
+    async with aiohttp.ClientSession(headers=headers) as session:
+        task = [fetch_metadata(session, coord) for coord in coordinates]
+        metadata_list = await asyncio.gather(*task)
 
-    pole_metadata: Metadata = {
-        "osm_id": int(json["osm_id"]),
-        "county": json["address"]["county"],
-        "street_name": json["address"]["road"],
-        "city": json["address"]["municipality"],
-    }
-    return pole_metadata
+    return metadata_list
+
