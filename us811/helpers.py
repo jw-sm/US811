@@ -1,10 +1,12 @@
 from typing import TypedDict
 import csv
 
+
 class Pole(TypedDict):
     structnum: str
     lat: float
     lon: float
+
 
 def parse_csv(file_path: str) -> list[Pole]:
     poles: list[Pole] = []

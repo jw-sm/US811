@@ -39,6 +39,7 @@
 <p><strong>Refactoring the core logic</strong></p>
 <ul>
     <li>[ ] File and logic cleanup 
+    <li>[ ] Refactoring to use FastAPI
  
 </ul>
 
