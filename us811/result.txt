@@ -1,6 +1,0 @@
-200
-{
-  "code": "NoSegment",
-  "message": "Could not find a matching segment for input coordinates",
-  "routes": []
-}
