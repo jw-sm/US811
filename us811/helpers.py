@@ -1,6 +1,7 @@
 import csv
 import json
 import os
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any, TypedDict
 
@@ -9,12 +10,11 @@ from dotenv import load_dotenv
 
 
 class Pole(TypedDict):
-    structnum: str
-    lat: float
+    struct: str
     lon: float
-    street: str
-    intersection: str
-    county: str
+    lat: float
+    dig_st: str
+    int_st: str
     verbiage: str
 
 
@@ -23,18 +23,15 @@ load_dotenv(dotenv_path=env_path)
 api_key = os.getenv("API_KEY")
 
 
-def parse_csv(file_path: str) -> list[Pole]:
-    poles: list[Pole] = []
+def parse_csv(file_path: str) -> Iterator[Pole]:
     with open(file_path) as csv_file:
         reader = csv.DictReader(csv_file)
         for row in reader:
-            pole_no: Pole = {
+            yield {
                 "structnum": row["structnum"].strip(),
                 "lat": float(row["lat"].strip()),
                 "lon": float(row["lon"].strip()),
             }
-            poles.append(pole_no)
-    return poles
 
 
 # Full solution:
@@ -48,10 +45,17 @@ def parse_csv(file_path: str) -> list[Pole]:
 # check the "steps"{"name": "str"}
 # if "steps" name != street name, get value of "name" and "distance"
 
-
 # https://api.mapbox.com/v4/{tileset_id}/tilequery/{lon},{lat}.json
-def tilequery(poles: list[Poles]) -> list[Poles]:
-    base_url: str = "https://api.mapbox.com/v4/mapbox.mapbox-streets-v8/tilequery/-92.311262,34.738984.json"
+
+
+def tilequery(pole: Pole) -> Pole:
+    """
+    Args:
+    Returns:
+    Raises:
+    """
+        
+    base_url = f"https://api.mapbox.com/v4/mapbox.mapbox-streets-v8/tilequery/{pole['lon']},{pole['lat']}.json"
     params: dict[str, str | Any] = {
         "radius": 500,
         "limit": 10,
@@ -63,10 +67,13 @@ def tilequery(poles: list[Poles]) -> list[Poles]:
     }
     response = requests.get(base_url, params=params)
     data = response.json()
-    print(json.dumps(data))
-    return data
+    print(json.dumps(data))    
+
+    #TODO: return a Pole
+
+
 
 
 if __name__ == "__main__":
-    data = parse_csv("../tests/unit/test_data.csv")
-    print(data)
+    data: list[Pole] = list(parse_csv("../tests/unit/test_data.csv"))
+    print(tilequery(data[0]))
