@@ -23,16 +23,18 @@ load_dotenv(dotenv_path=env_path)
 api_key = os.getenv("API_KEY")
 
 
-def parse_csv(file_path: str) -> Iterator[Pole]:
+def parse_csv(file_path: str) -> list[dict]:
+    if not isinstance(file_path, str):
+        raise TypeError(f"Expected str, got {type(file_path)}")
+
     with open(file_path) as csv_file:
         reader = csv.DictReader(csv_file)
-        for row in reader:
-            yield {
-                "structnum": row["structnum"].strip(),
-                "lat": float(row["lat"].strip()),
-                "lon": float(row["lon"].strip()),
-            }
+        result = list(reader)
 
+    if not isinstance(result, list):
+        raise TypeError(f"Expected to return list, got {type(result)}")
+
+    return result
 
 # Full solution:
 # query tileset using the gps coordinate
@@ -54,7 +56,6 @@ def tilequery(pole: Pole) -> Pole:
     Returns:
     Raises:
     """
-        
     base_url = f"https://api.mapbox.com/v4/mapbox.mapbox-streets-v8/tilequery/{pole['lon']},{pole['lat']}.json"
     params: dict[str, str | Any] = {
         "radius": 500,
@@ -67,13 +68,14 @@ def tilequery(pole: Pole) -> Pole:
     }
     response = requests.get(base_url, params=params)
     data = response.json()
-    print(json.dumps(data))    
+    print(data)
+    # TODO: get the appropriate values from the response value - handle edge cases
+    # TODO: Make a separate function that accepts a python dic containing the response, then extract the needed values
+    print(json.dumps(data))
 
-    #TODO: return a Pole
-
-
+    # TODO: return a Pole
 
 
 if __name__ == "__main__":
-    data: list[Pole] = list(parse_csv("../tests/unit/test_data.csv"))
-    print(tilequery(data[0]))
+    test = parse_csv("../tests/unit/test_data.csv")
+    print(test)
