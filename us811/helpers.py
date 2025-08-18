@@ -1,9 +1,9 @@
 import csv
-import json
 import os
 from itertools import islice
 from pathlib import Path
 from typing import Any, TypedDict
+from normalize import STREET_ABBREVIATIONS, normalize
 
 import requests
 from dotenv import load_dotenv
@@ -11,6 +11,8 @@ from dotenv import load_dotenv
 
 class Pole(TypedDict):
     struct: str
+    orig_lon: float
+    orig_lat: float
     dig_lon: float
     dig_lat: float
     dig_street: str
@@ -60,7 +62,7 @@ def tilequery(csv: dict) -> Pole:
     """
     base_url = f"https://api.mapbox.com/v4/mapbox.mapbox-streets-v8/tilequery/{csv['lon']},{csv['lat']}.json"
     params: dict[str, str | Any] = {
-        "radius": 500,
+        "radius": 1000,
         "limit": 10,
         "geometry": "linestring",
         "dedupe": False,
@@ -70,7 +72,6 @@ def tilequery(csv: dict) -> Pole:
     }
     response = requests.get(base_url, params=params)
     response_data = response.json()
-    # print(json.dumps(response_data))
 
     seen_names = set()
     valid_streets = (
@@ -85,16 +86,86 @@ def tilequery(csv: dict) -> Pole:
 
     return {
         "struct": csv["structnum"],
+        "orig_lon": float(csv["lon"]),
+        "orig_lat": float(csv["lat"]),
         "dig_lon": result[0].get("geometry", {}).get("coordinates", [])[0],
         "dig_lat": result[0].get("geometry", {}).get("coordinates", [])[1],
-        "dig_street": result[0].get("properties", {}).get("name"),
+        "dig_street": result[0].get("properties", {}).get("name").upper(),
         "inter_lon": result[1].get("geometry", {}).get("coordinates", [])[0],
         "inter_lat": result[1].get("geometry", {}).get("coordinates", [])[1],
-        "intersection": result[1].get("properties", {}).get("name"),
+        "intersection": result[1].get("properties", {}).get("name").upper(),
     }
 
+
+# https://api.mapbox.com/directions/v5/{profile}/{coordinates}
+def directions(pole: dict) -> int:
+    base_url = f"https://api.mapbox.com/directions/v5/mapbox/driving/{pole['inter_lon']},{pole['inter_lat']};{pole['dig_lon']},{pole['dig_lat']}"
+    params: dict[str, str | Any] = {"access_token": api_key, "steps": "true"}
+
+    response = requests.get(base_url, params=params)
+    response_data = response.json()
+
+    print(distance_from_inter_to_dig(response_data, pole["dig_street"]))
+
+
+def distance_from_inter_to_dig(json: dict, dig_st: str) -> int:
+    route = json["routes"][0]
+    legs = route["legs"]
+
+    normalized_dig_st = normalize(dig_st)
+
+    for leg in legs:
+        for step in reversed(leg["steps"]):
+            step_name = step.get("name", "")
+            if (
+                "maneuver" in step
+                and step["maneuver"]["type"] == "turn"
+                and normalize(step_name).lower() == normalized_dig_st.lower()
+            ):
+                distance_meters = step["distance"]
+                distance_feet = distance_meters * 3.28084
+                return int(distance_feet)
+    return None
+
+
+"""
+def distance_from_inter_to_dig(json: dict, dig_st: str) -> int:
+    route = json["routes"][0]
+    legs = route["legs"]
+
+    print(f"Searching for street: '{dig_st}'")  # Debug: What we're searching for
+
+    for leg in legs:
+        steps = leg["steps"]
+        print(f"\nProcessing leg with {len(steps)} steps")  # Debug: Leg info
+
+        for i, step in enumerate(reversed(steps), 1):
+            step_name = step.get("name", "NO_NAME")  # Fallback if 'name' missing
+            maneuver_type = step.get("maneuver", {}).get(
+                "type", "NO_MANEUVER"
+            )  # Fallback
+
+            print(f"\nStep {i} (reversed order):")
+            print(f"  Name: '{step_name}'")
+            print(f"  Maneuver type: '{maneuver_type}'")
+            print(f"  Distance: {step.get('distance')} meters")
+
+            if (
+                "maneuver" in step
+                and step["maneuver"]["type"] == "turn"
+                and step.get("name") == dig_st
+            ):
+                print("✅ MATCH FOUND!")  # Debug: Success
+                distance_meters = step["distance"]
+                distance_feet = distance_meters * 3.28084
+                return int(distance_feet)
+
+    print("❌ No matching step found.")  # Debug: Failure
+    return None
+"""
 
 if __name__ == "__main__":
     test = parse_csv("../tests/unit/test_data.csv")
     first_pole = test[0]
-    print(json.dumps(tilequery(first_pole)))
+    pole = tilequery(first_pole)
+    directions(pole)
