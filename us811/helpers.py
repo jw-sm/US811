@@ -128,42 +128,6 @@ def distance_from_inter_to_dig(json: dict, dig_st: str) -> int:
     return None
 
 
-"""
-def distance_from_inter_to_dig(json: dict, dig_st: str) -> int:
-    route = json["routes"][0]
-    legs = route["legs"]
-
-    print(f"Searching for street: '{dig_st}'")  # Debug: What we're searching for
-
-    for leg in legs:
-        steps = leg["steps"]
-        print(f"\nProcessing leg with {len(steps)} steps")  # Debug: Leg info
-
-        for i, step in enumerate(reversed(steps), 1):
-            step_name = step.get("name", "NO_NAME")  # Fallback if 'name' missing
-            maneuver_type = step.get("maneuver", {}).get(
-                "type", "NO_MANEUVER"
-            )  # Fallback
-
-            print(f"\nStep {i} (reversed order):")
-            print(f"  Name: '{step_name}'")
-            print(f"  Maneuver type: '{maneuver_type}'")
-            print(f"  Distance: {step.get('distance')} meters")
-
-            if (
-                "maneuver" in step
-                and step["maneuver"]["type"] == "turn"
-                and step.get("name") == dig_st
-            ):
-                print("✅ MATCH FOUND!")  # Debug: Success
-                distance_meters = step["distance"]
-                distance_feet = distance_meters * 3.28084
-                return int(distance_feet)
-
-    print("❌ No matching step found.")  # Debug: Failure
-    return None
-"""
-
 if __name__ == "__main__":
     test = parse_csv("../tests/unit/test_data.csv")
     first_pole = test[0]
