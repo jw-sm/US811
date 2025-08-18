@@ -133,3 +133,4 @@ if __name__ == "__main__":
     first_pole = test[0]
     pole = tilequery(first_pole)
     directions(pole)
+    directions(pole)
