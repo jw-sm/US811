@@ -1,6 +1,5 @@
 import csv
 import math
-import json
 import os
 from dataclasses import dataclass
 from itertools import islice
@@ -31,6 +30,8 @@ class Pole:
     int_to_dig: Optional[int] = None
     dig_to_pole: Optional[int] = None
     # -----------------------
+    int_to_dig_dir: Optional[str] = None
+    dir_to_pole_dir: Optional[str] = None
     verbiage: Optional[str] = None
 
 
@@ -93,7 +94,7 @@ def tilequery(pole: Pole) -> Pole:
 
     response = requests.get(base_url, params=params)
     response_data = response.json()
-    # TODO: switch to for loop, then access "item + 1" index to get the most accurate point near the original lat lot
+
     seen_names = set()
     valid_streets = (
         item
@@ -103,6 +104,7 @@ def tilequery(pole: Pole) -> Pole:
         and name not in seen_names
         and not seen_names.add(name)
     )
+
     result = list(islice(valid_streets, 2))
     pole.dig_lon = result[0].get("geometry", {}).get("coordinates", [])[0]
     pole.dig_lat = result[0].get("geometry", {}).get("coordinates", [])[1]
@@ -147,10 +149,15 @@ def distance_from_inter_to_dig(pole: Pole) -> Pole:
                 prev = steps[i - 1]
                 intersection = prev.get("name", "").upper()
                 distance_meters = step["distance"]
-                #dig_to_pole_feet =  
 
+                # dig_to_pole_feet =
+
+                pole.dig_to_pole = distance_feet(
+                    pole.lat, pole.lon, pole.dig_lat, pole.dig_lon
+                )
                 pole.intersection = intersection
                 pole.int_to_dig = math.trunc(distance_meters * 3.28084)
+                breakpoint()
                 return pole
     return Pole
 
@@ -159,8 +166,7 @@ def distance_feet(lat1: float, lon1: float, lat2: float, lon2: float) -> int:
     point1 = (lat1, lon1)
     point2 = (lat2, lon2)
     distance_meters = geodesic(point1, point2).meters
-    distance_feet = distance_meters * 3.28084
-    print(f"Distance: {math.trunc(distance_feet)} feet")
+    distance_feet = math.trunc(distance_meters * 3.28084)
     return distance_feet
 
 
