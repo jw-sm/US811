@@ -1,5 +1,6 @@
 import csv
 import math
+import json
 import os
 from dataclasses import dataclass
 from itertools import islice
@@ -26,8 +27,6 @@ class Pole:
     inter_lon_point: Optional[float] = None
     inter_lat_point: Optional[float] = None
     # -----------------------
-    inter_lon: Optional[float] = None
-    inter_lon: Optional[float] = None
     intersection: Optional[str] = None
     int_to_dig: Optional[int] = None
     dig_to_pole: Optional[int] = None
@@ -94,7 +93,7 @@ def tilequery(pole: Pole) -> Pole:
 
     response = requests.get(base_url, params=params)
     response_data = response.json()
-
+    # TODO: switch to for loop, then access "item + 1" index to get the most accurate point near the original lat lot
     seen_names = set()
     valid_streets = (
         item
@@ -148,10 +147,10 @@ def distance_from_inter_to_dig(pole: Pole) -> Pole:
                 prev = steps[i - 1]
                 intersection = prev.get("name", "").upper()
                 distance_meters = step["distance"]
+                #dig_to_pole_feet =  
 
                 pole.intersection = intersection
-                pole.int_to_dig = distance_meters * 3.28084
-                breakpoint()
+                pole.int_to_dig = math.trunc(distance_meters * 3.28084)
                 return pole
     return Pole
 
@@ -196,3 +195,4 @@ if __name__ == "__main__":
     poles = parse_csv("../tests/unit/test_data.csv")
     enriched_tile = [tilequery(p) for p in poles]
     with_distance = [distance_from_inter_to_dig(p) for p in poles]
+    print(with_distance)
