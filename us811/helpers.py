@@ -115,7 +115,7 @@ def tilequery(pole: Pole) -> Pole:
 
 
 # https://api.mapbox.com/directions/v5/{profile}/{coordinates}
-def directions(pole: Pole) -> Pole:
+def directions(pole: Pole) -> dict:
     base_url = f"https://api.mapbox.com/directions/v5/mapbox/driving/{pole.inter_lon_point},{pole.inter_lat_point};{pole.dig_lon},{pole.dig_lat}"
 
     params: dict[str, str | Any] = {"access_token": api_key, "steps": "true"}
@@ -123,28 +123,37 @@ def directions(pole: Pole) -> Pole:
     response = requests.get(base_url, params=params)
     response_data = response.json()
 
-    pole.int_to_dig =  distance_from_inter_to_dig(response_data, pole.dig_street)
-    breakpoint()
-    return pole
+    # pole.int_to_dig = distance_from_inter_to_dig(response_data, pole.dig_street)
 
-def distance_from_inter_to_dig(json: dict dig_st: str) -> int:
-    route = json["routes"][0]
+    # return pole
+    return response_data
+
+
+def distance_from_inter_to_dig(pole: Pole) -> Pole:
+    response_data = directions(pole)
+    route = response_data["routes"][0]
     legs = route["legs"]
 
-    normalized_dig_st = normalize(dig_st)
+    normalized_dig_st = normalize(pole.dig_street)
 
     for leg in legs:
-        for step in reversed(leg["steps"]):
+        steps = leg["steps"]
+        for i, step in reversed(list(enumerate(steps))):
             step_name = step.get("name", "")
             if (
                 "maneuver" in step
                 and step["maneuver"]["type"] == "turn"
                 and normalize(step_name).lower() == normalized_dig_st.lower()
             ):
+                prev = steps[i - 1]
+                intersection = prev.get("name", "").upper()
                 distance_meters = step["distance"]
-                distance_feet = distance_meters * 3.28084
-                return int(distance_feet)
-    return None
+
+                pole.intersection = intersection
+                pole.int_to_dig = distance_meters * 3.28084
+                breakpoint()
+                return pole
+    return Pole
 
 
 def distance_feet(lat1: float, lon1: float, lat2: float, lon2: float) -> int:
@@ -186,5 +195,4 @@ def get_screen_direction_detailed(lat1, lon1, lat2, lon2) -> str:
 if __name__ == "__main__":
     poles = parse_csv("../tests/unit/test_data.csv")
     enriched_tile = [tilequery(p) for p in poles]
-    with_directions = [directions(p) for p in enriched_tile]
-    breakpoint()
+    with_distance = [distance_from_inter_to_dig(p) for p in poles]
