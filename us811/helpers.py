@@ -1,24 +1,38 @@
 import csv
+import math
 import os
+from dataclasses import dataclass
 from itertools import islice
 from pathlib import Path
-from typing import Any, TypedDict
-from normalize import STREET_ABBREVIATIONS, normalize
+from typing import Any, Optional
 
 import requests
 from dotenv import load_dotenv
+from geopy.distance import geodesic
+from normalize import normalize
 
 
-class Pole(TypedDict):
-    struct: str
-    orig_lon: float
-    orig_lat: float
-    dig_lon: float
-    dig_lat: float
-    dig_street: str
-    inter_lon: float
-    inter_lat: float
-    intersection: str
+@dataclass
+class Pole:
+    # -----------------------
+    pole_number: str
+    lon: float
+    lat: float
+    # -----------------------
+    dig_lon: Optional[float] = None
+    dig_lat: Optional[float] = None
+    dig_street: Optional[str] = None
+    # -----------------------
+    inter_lon_point: Optional[float] = None
+    inter_lat_point: Optional[float] = None
+    # -----------------------
+    inter_lon: Optional[float] = None
+    inter_lon: Optional[float] = None
+    intersection: Optional[str] = None
+    int_to_dig: Optional[int] = None
+    dig_to_pole: Optional[int] = None
+    # -----------------------
+    verbiage: Optional[str] = None
 
 
 env_path = Path(__file__).resolve().parent.parent / ".env"
@@ -26,18 +40,22 @@ load_dotenv(dotenv_path=env_path)
 api_key = os.getenv("API_KEY")
 
 
-def parse_csv(file_path: str) -> list[dict]:
+def parse_csv(file_path: str) -> list[Pole]:
     if not isinstance(file_path, str):
         raise TypeError(f"Expected str, got {type(file_path)}")
 
+    poles: list[Pole] = []
+
     with open(file_path) as csv_file:
         reader = csv.DictReader(csv_file)
-        result = list(reader)
-
-    if not isinstance(result, list):
-        raise TypeError(f"Expected to return list, got {type(result)}")
-
-    return result
+        for row in reader:
+            pole = Pole(
+                pole_number=row["structnum"],
+                lon=float(row["lon"]),
+                lat=float(row["lat"]),
+            )
+            poles.append(pole)
+    return poles
 
 
 # Full solution:
@@ -54,13 +72,14 @@ def parse_csv(file_path: str) -> list[dict]:
 # https://api.mapbox.com/v4/{tileset_id}/tilequery/{lon},{lat}.json
 
 
-def tilequery(csv: dict) -> Pole:
+def tilequery(pole: Pole) -> Pole:
     """
     Args:
+        list of Poles from parse_csv
     Returns:
+        enriched list of Poles
     Raises:
     """
-    base_url = f"https://api.mapbox.com/v4/mapbox.mapbox-streets-v8/tilequery/{csv['lon']},{csv['lat']}.json"
     params: dict[str, str | Any] = {
         "radius": 1000,
         "limit": 10,
@@ -70,6 +89,9 @@ def tilequery(csv: dict) -> Pole:
         "layers": "road",
         "access_token": api_key,
     }
+
+    base_url = f"https://api.mapbox.com/v4/mapbox.mapbox-streets-v8/tilequery/{pole.lon},{pole.lat}.json"
+
     response = requests.get(base_url, params=params)
     response_data = response.json()
 
@@ -83,32 +105,29 @@ def tilequery(csv: dict) -> Pole:
         and not seen_names.add(name)
     )
     result = list(islice(valid_streets, 2))
+    pole.dig_lon = result[0].get("geometry", {}).get("coordinates", [])[0]
+    pole.dig_lat = result[0].get("geometry", {}).get("coordinates", [])[1]
+    pole.dig_street = result[0].get("properties", {}).get("name").upper()
+    pole.inter_lon_point = result[1].get("geometry", {}).get("coordinates", [])[0]
+    pole.inter_lat_point = result[1].get("geometry", {}).get("coordinates", [])[1]
 
-    return {
-        "struct": csv["structnum"],
-        "orig_lon": float(csv["lon"]),
-        "orig_lat": float(csv["lat"]),
-        "dig_lon": result[0].get("geometry", {}).get("coordinates", [])[0],
-        "dig_lat": result[0].get("geometry", {}).get("coordinates", [])[1],
-        "dig_street": result[0].get("properties", {}).get("name").upper(),
-        "inter_lon": result[1].get("geometry", {}).get("coordinates", [])[0],
-        "inter_lat": result[1].get("geometry", {}).get("coordinates", [])[1],
-        "intersection": result[1].get("properties", {}).get("name").upper(),
-    }
+    return pole
 
 
 # https://api.mapbox.com/directions/v5/{profile}/{coordinates}
-def directions(pole: dict) -> int:
-    base_url = f"https://api.mapbox.com/directions/v5/mapbox/driving/{pole['inter_lon']},{pole['inter_lat']};{pole['dig_lon']},{pole['dig_lat']}"
+def directions(pole: Pole) -> Pole:
+    base_url = f"https://api.mapbox.com/directions/v5/mapbox/driving/{pole.inter_lon_point},{pole.inter_lat_point};{pole.dig_lon},{pole.dig_lat}"
+
     params: dict[str, str | Any] = {"access_token": api_key, "steps": "true"}
 
     response = requests.get(base_url, params=params)
     response_data = response.json()
 
-    print(distance_from_inter_to_dig(response_data, pole["dig_street"]))
+    pole.int_to_dig =  distance_from_inter_to_dig(response_data, pole.dig_street)
+    breakpoint()
+    return pole
 
-
-def distance_from_inter_to_dig(json: dict, dig_st: str) -> int:
+def distance_from_inter_to_dig(json: dict dig_st: str) -> int:
     route = json["routes"][0]
     legs = route["legs"]
 
@@ -128,9 +147,44 @@ def distance_from_inter_to_dig(json: dict, dig_st: str) -> int:
     return None
 
 
+def distance_feet(lat1: float, lon1: float, lat2: float, lon2: float) -> int:
+    point1 = (lat1, lon1)
+    point2 = (lat2, lon2)
+    distance_meters = geodesic(point1, point2).meters
+    distance_feet = distance_meters * 3.28084
+    print(f"Distance: {math.trunc(distance_feet)} feet")
+    return distance_feet
+
+
+def get_screen_direction_detailed(lat1, lon1, lat2, lon2) -> str:
+    """
+    Args:
+        lat1,lat2 = structnum gps
+        lat2,lon2 = a point in dig street
+    Return:
+        Direction on which the structnum is located
+        perpendicular to the point in dig street
+    """
+    delta_lat = lat2 - lat1
+    delta_lon = lon2 - lon1
+    angle = math.degrees(math.atan2(delta_lon, delta_lat)) % 360  # 0°=N, 90°=E
+
+    directions = [
+        "NORTH",
+        "NORTHEAST",
+        "EAST",
+        "SOUTHEAST",
+        "SOUT",
+        "SOUTHWEST",
+        "WEST",
+        "NORTHWEST",
+    ]
+    idx = round(angle / 45) % 8
+    return directions[idx]
+
+
 if __name__ == "__main__":
-    test = parse_csv("../tests/unit/test_data.csv")
-    first_pole = test[0]
-    pole = tilequery(first_pole)
-    directions(pole)
-    directions(pole)
+    poles = parse_csv("../tests/unit/test_data.csv")
+    enriched_tile = [tilequery(p) for p in poles]
+    with_directions = [directions(p) for p in enriched_tile]
+    breakpoint()
