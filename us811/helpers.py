@@ -1,10 +1,8 @@
 import csv
-import json
 import math
 import os
 import re
 from dataclasses import dataclass
-from itertools import islice
 from pathlib import Path
 from typing import Any, Optional
 
@@ -84,6 +82,7 @@ def parse_csv(file_path: str) -> list[Pole]:
 # check the "steps"{"name": "str"}
 # if "steps" name != street name, get value of "name" and "distance"
 
+
 # https://api.mapbox.com/v4/{tileset_id}/tilequery/{lon},{lat}.json
 def tilequery(pole: Pole) -> Pole:
     """
@@ -94,7 +93,7 @@ def tilequery(pole: Pole) -> Pole:
     Raises:
     """
     params: dict[str, str | Any] = {
-        "radius": 1000,
+        "radius": 500,
         "limit": 15,
         "geometry": "linestring",
         "dedupe": False,
@@ -105,14 +104,14 @@ def tilequery(pole: Pole) -> Pole:
     base_url = f"https://api.mapbox.com/v4/mapbox.mapbox-streets-v8/tilequery/{pole.lon},{pole.lat}.json"
     response = requests.get(base_url, params=params)
     response_data = response.json()
-    
+
     # Get all valid streets with names/refs
     valid_streets = []
     seen_names = set()
-    
+
     all_features = response_data.get("features", [])
     print(f"Processing {len(all_features)} features from API")
-    
+
     # First, let's see all features for debugging
     for i, item in enumerate(all_features):
         if isinstance(item, dict):
@@ -121,72 +120,91 @@ def tilequery(pole: Pole) -> Pole:
             name = props.get("name")
             ref = props.get("ref")
             feature_id = item.get("id")
-            print(f"Feature {i} (id: {feature_id}): class='{street_class}', name='{name}', ref='{ref}'")
-    
-    # Now process only street features
-    for i, item in enumerate(all_features):
-        if (isinstance(item, dict) 
-            and item.get("properties", {}).get("class") == "street"):
-            
-            properties = item.get("properties", {})
-            name = properties.get("name")
-            ref = properties.get("ref")
-            identifier = name or ref  # Use name first, then ref
-            feature_id = item.get("id")
-            
-            print(f"Street feature {i} (id: {feature_id}): name='{name}', ref='{ref}', using='{identifier}'")
-            
-            # Only add if it has a name/ref and we haven't seen it before
-            if identifier and identifier not in seen_names:
-                seen_names.add(identifier)
-                valid_streets.append(item)
-                print(f"  ✓ Added as valid street #{len(valid_streets)}")
-                
-                # Stop once we have 2 unique named streets
-                if len(valid_streets) >= 2:
-                    print("  Stopping - found 2 streets")
-                    break
-            elif identifier:
-                print(f"  ✗ Skipped (duplicate identifier: '{identifier}')")
-            else:
-                print(f"  ✗ Skipped (no name/ref)")
-    
+            print(
+                f"Feature {i} (id: {feature_id}): class='{street_class}', name='{name}', ref='{ref}'"
+            )
+
+    # Priority order: streets with names, streets with refs, primary with names, primary with refs
+    search_priorities = [
+        ("street", "name"),
+        ("street", "ref"),
+        ("primary", "name"),
+        ("primary", "ref"),
+    ]
+
+    for class_type, identifier_type in search_priorities:
+        if len(valid_streets) >= 2:
+            break
+
+        print(f"Looking for {class_type} roads with {identifier_type}...")
+
+        for i, item in enumerate(all_features):
+            if (
+                isinstance(item, dict)
+                and item.get("properties", {}).get("class") == class_type
+            ):
+                properties = item.get("properties", {})
+                identifier = properties.get(identifier_type)
+                feature_id = item.get("id")
+
+                if identifier:
+                    print(
+                        f"{class_type.title()} feature {i} (id: {feature_id}): {identifier_type}='{identifier}'"
+                    )
+
+                    if identifier not in seen_names:
+                        seen_names.add(identifier)
+                        valid_streets.append(item)
+                        print(f"  ✓ Added as valid {class_type} #{len(valid_streets)}")
+
+                        if len(valid_streets) >= 2:
+                            print("  Stopping - found 2 roads")
+                            break
+                    else:
+                        print(f"  ✗ Skipped (duplicate identifier: '{identifier}')")
+
+        print(f"After {class_type}/{identifier_type}: {len(valid_streets)} roads found")
+
     print(f"Final count: {len(valid_streets)} valid streets")
-    
+
     # Extract coordinates and names
     if len(valid_streets) >= 1:
         geometry = valid_streets[0].get("geometry", {})
         coords = geometry.get("coordinates")
-        
+
         if coords and isinstance(coords, list) and len(coords) >= 2:
             pole.dig_lon = coords[0]
             pole.dig_lat = coords[1]
             print(f"Set dig coords: lon={pole.dig_lon}, lat={pole.dig_lat}")
         else:
             print(f"Invalid coordinates for first street: {coords}")
-        
+
         properties = valid_streets[0].get("properties", {})
         street_name = properties.get("name") or properties.get("ref", "")
         pole.dig_street = normalize(street_name)
         print(f"Set dig_street: '{pole.dig_street}'")
-    
+
     if len(valid_streets) >= 2:
         geometry = valid_streets[1].get("geometry", {})
         coords = geometry.get("coordinates")
-        
+
         if coords and isinstance(coords, list) and len(coords) >= 2:
             pole.inter_lon_point = coords[0]
             pole.inter_lat_point = coords[1]
-            print(f"Set inter coords: lon={pole.inter_lon_point}, lat={pole.inter_lat_point}")
+            print(
+                f"Set inter coords: lon={pole.inter_lon_point}, lat={pole.inter_lat_point}"
+            )
         else:
             print(f"Invalid coordinates for second street: {coords}")
-        
+
         inter_properties = valid_streets[1].get("properties", {})
         inter_name = inter_properties.get("name") or inter_properties.get("ref", "")
         pole.intersection = normalize(inter_name)
         print(f"Set intersection: '{pole.intersection}'")
-    
+
     return pole
+
+
 # https://api.mapbox.com/directions/v5/{profile}/{coordinates}
 def directions(pole: Pole) -> dict:
     base_url = f"https://api.mapbox.com/directions/v5/mapbox/driving/{pole.inter_lon_point},{pole.inter_lat_point};{pole.dig_lon},{pole.dig_lat}"
@@ -196,6 +214,7 @@ def directions(pole: Pole) -> dict:
     response_data = response.json()
 
     return response_data
+
 
 def distance_from_inter_to_dig(pole: Pole) -> Pole:
     response_data = directions(pole)
@@ -216,7 +235,9 @@ def distance_from_inter_to_dig(pole: Pole) -> Pole:
             step_identifier = step_name or step_ref
             normalized_step_identifier = normalize(step_identifier)
 
-            print(f"  Step {i}: name='{step_name}', ref='{step_ref}', using='{step_identifier}', normalized='{normalized_step_identifier}'")
+            print(
+                f"  Step {i}: name='{step_name}', ref='{step_ref}', using='{step_identifier}', normalized='{normalized_step_identifier}'"
+            )
 
             # Try multiple matching strategies
             is_match = False
@@ -228,12 +249,16 @@ def distance_from_inter_to_dig(pole: Pole) -> Pole:
 
             # Strategy 2: Check if dig_street is contained in step identifier
             elif pole.dig_street in normalized_step_identifier:
-                print(f"  ✓ CONTAINS MATCH at step {i} ('{pole.dig_street}' in '{normalized_step_identifier}')")
+                print(
+                    f"  ✓ CONTAINS MATCH at step {i} ('{pole.dig_street}' in '{normalized_step_identifier}')"
+                )
                 is_match = True
 
             # Strategy 3: Check if step identifier is contained in dig_street
             elif normalized_step_identifier in pole.dig_street:
-                print(f"  ✓ REVERSE CONTAINS MATCH at step {i} ('{normalized_step_identifier}' in '{pole.dig_street}')")
+                print(
+                    f"  ✓ REVERSE CONTAINS MATCH at step {i} ('{normalized_step_identifier}' in '{pole.dig_street}')"
+                )
                 is_match = True
 
             # Strategy 4: For ref codes like E0960, try matching the number part
@@ -243,12 +268,25 @@ def distance_from_inter_to_dig(pole: Pole) -> Pole:
                 if dig_match:
                     dig_dir, dig_num = dig_match.groups()
                     # Look for the number in the step identifier
-                    if dig_num.lstrip("0") in normalized_step_identifier or dig_num in normalized_step_identifier:
+                    if (
+                        dig_num.lstrip("0") in normalized_step_identifier
+                        or dig_num in normalized_step_identifier
+                    ):
                         # Also check if direction matches (E->EAST, W->WEST, etc.)
-                        direction_map = {"E": "EAST", "W": "WEST", "N": "NORTH", "S": "SOUTH"}
+                        direction_map = {
+                            "E": "EAST",
+                            "W": "WEST",
+                            "N": "NORTH",
+                            "S": "SOUTH",
+                        }
                         full_direction = direction_map.get(dig_dir, dig_dir)
-                        if full_direction in normalized_step_identifier or dig_dir in normalized_step_identifier:
-                            print(f"  ✓ REF CODE MATCH at step {i} (direction: {dig_dir}/{full_direction}, number: {dig_num})")
+                        if (
+                            full_direction in normalized_step_identifier
+                            or dig_dir in normalized_step_identifier
+                        ):
+                            print(
+                                f"  ✓ REF CODE MATCH at step {i} (direction: {dig_dir}/{full_direction}, number: {dig_num})"
+                            )
                             is_match = True
 
             if is_match:
@@ -293,6 +331,7 @@ def distance_from_inter_to_dig(pole: Pole) -> Pole:
                     )
                 return pole
 
+
 def distance_feet(lat1: float, lon1: float, lat2: float, lon2: float) -> int:
     point1 = (lat1, lon1)
     point2 = (lat2, lon2)
@@ -320,8 +359,48 @@ def get_direction(lat1, lon1, lat2, lon2) -> str:
     return directions[idx]
 
 
+def print_poles_to_file(poles, filename="poles_output.txt"):
+    """
+    Prints multiple Pole objects to a single text file with formatted headers.
+
+    Args:
+        poles: List of Pole objects to print
+        filename: Name of the output file (default: "poles_output.txt")
+    """
+    with open(filename, "w", encoding="utf-8") as f:
+        # Create multiline string with all poles information
+        all_poles_info = ""
+
+        for pole in poles:
+            all_poles_info += f"""==================
+
+POLE RESTORATION
+HAND DIGGING...
+
+FROM THE INTERSECTION, POLE IS APPROX {pole.int_to_dig} FT {pole.int_to_dig_dir}
+OF {pole.intersection} AND APPROX {pole.dig_to_pole} FT {pole.dig_to_pole_dir} OF {pole.dig_street}
+
+
+POLE MARKINGS....
+
+STRUCTNUM: {pole.pole_number}
+GPS: {pole.lat},{pole.lon}
+==================
+
+"""
+
+        f.write(all_poles_info)
+
+
 if __name__ == "__main__":
-    poles = parse_csv("../tests/unit/test_data.csv")
-    enriched_tile = [tilequery(p) for p in poles]
-    with_distance = [distance_from_inter_to_dig(p) for p in poles]
-    print(with_distance)
+    poles = parse_csv("../tests/unit/del.csv")
+    final_poles = []
+    for pole in poles:
+        enriched_pole = tilequery(pole)
+        final_pole = distance_from_inter_to_dig(enriched_pole)
+        final_poles.append(final_pole)
+
+    print_poles_to_file(final_poles, "processed_poles_output.txt")
+    print(
+        f"All {len(final_poles)} processed poles have been written to 'processed_poles_output.txt'!"
+    )
