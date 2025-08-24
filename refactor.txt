@@ -32,7 +32,8 @@ tilequery(): single Pole object -> enrich the Pole object with necessary data ->
                 - if not, handle it!!!
         -  loop through features list
                 - if instance is dict and class type inside is == class_type of in search priorites
-                    - TODO: continue
-             
-
-
+                - get the "properties" dict of the current item
+                - get the the identifier by querying w/ identifier_type
+                - get the feature id (for debugging purposes)
+        - if identifer
+        

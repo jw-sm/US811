@@ -112,6 +112,7 @@ def tilequery(pole: Pole) -> Pole:
     all_features = response_data.get("features", [])
     print(f"Processing {len(all_features)} features from API")
 
+    """
     # First, let's see all features for debugging
     for i, item in enumerate(all_features):
         if isinstance(item, dict):
@@ -123,6 +124,7 @@ def tilequery(pole: Pole) -> Pole:
             print(
                 f"Feature {i} (id: {feature_id}): class='{street_class}', name='{name}', ref='{ref}'"
             )
+    """
 
     # Priority order: streets with names, streets with refs, primary with names, primary with refs
     search_priorities = [
@@ -132,11 +134,11 @@ def tilequery(pole: Pole) -> Pole:
         ("primary", "ref"),
     ]
 
-    for class_type, identifier_type in search_priorities:
+    for class_type, street_name in search_priorities:
         if len(valid_streets) >= 2:
             break
 
-        print(f"Looking for {class_type} roads with {identifier_type}...")
+        print(f"Looking for {class_type} roads with {street_name}...")
 
         for i, item in enumerate(all_features):
             if (
@@ -144,26 +146,23 @@ def tilequery(pole: Pole) -> Pole:
                 and item.get("properties", {}).get("class") == class_type
             ):
                 properties = item.get("properties", {})
-                identifier = properties.get(identifier_type)
+                identifier = properties.get(street_name)
                 feature_id = item.get("id")
-
                 if identifier:
                     print(
-                        f"{class_type.title()} feature {i} (id: {feature_id}): {identifier_type}='{identifier}'"
+                        f"{class_type.title()} feature {i} (id: {feature_id}): {street_name}='{identifier}'"
                     )
-
                     if identifier not in seen_names:
                         seen_names.add(identifier)
                         valid_streets.append(item)
                         print(f"  ✓ Added as valid {class_type} #{len(valid_streets)}")
-
                         if len(valid_streets) >= 2:
                             print("  Stopping - found 2 roads")
                             break
                     else:
                         print(f"  ✗ Skipped (duplicate identifier: '{identifier}')")
 
-        print(f"After {class_type}/{identifier_type}: {len(valid_streets)} roads found")
+        print(f"After {class_type}/{street_name}: {len(valid_streets)} roads found")
 
     print(f"Final count: {len(valid_streets)} valid streets")
 
