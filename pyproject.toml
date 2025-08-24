@@ -1,0 +1,130 @@
+indent-width = 2
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "us811"
+version = "0.1.0"
+description = "internal tool, automation, and API for pole restoration/pole installation ticket locates"  
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "del", email = "p145kd37@gmail.com"}
+]
+keywords = ["python"]  
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+requires-python = ">=3.9"
+dependencies = [] 
+
+[project.optional-dependencies]
+# Development dependencies
+dev = [
+    "ruff>=0.1.0",        # Linting and formatting
+    "pytest>=7.0.0",      # Testing framework
+    "mypy>=1.0.0",        # Type checking
+    "pre-commit>=3.0.0",  # Git hooks for code quality
+]
+# Testing only dependencies
+test = [
+    "pytest>=7.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/jw-sm/US811"
+Repository = "https://github.com/jw-sm/US811"
+Issues = "https://github.com/jw-sm/US811/issues"
+
+# [project.scripts]
+# your-cli-tool = "your_project.cli:main"
+
+# Ruff
+[tool.ruff]
+line-length = 88
+target-version = "py39"
+
+# Enable these rule categories
+lint.select = [
+  "F",  # Pyflakes
+  "I",  # isort
+  "W6",
+  "E71",
+  "E72",
+  # "E124",
+  "E501",   # line-too-long
+  # "E502",
+  "E702",   # multiple-statements-on-one-line-semicolon
+  "E703",   # useless-semicolon
+  "E731",   # lambda-assignment
+  "W191",   # tab-indentation
+  "W291",   # trailing-whitespace
+  "W293",   # blank-line-with-whitespace
+  "UP039",  # unnecessary-class-parentheses
+  "C416",   # unnecessary-comprehension
+  "RET506", # superfluous-else-raise
+  "RET507", # superfluous-else-continue
+  "A",      # builtin-variable-shadowing, builtin-argument-shadowing, builtin-attribute-shadowing
+  "RUF018", # assignment-in-assert
+]
+
+# Ignore these specific rules
+lint.ignore = [
+    "E501",   # Line too long (handled by formatter)
+    "B008",   # Do not perform function calls in argument defaults
+    "B904",   # Within an `except` clause, raise exceptions with `raise ... from err`
+]
+
+# Exclude these directories
+exclude = [
+    ".git",
+    ".mypy_cache",
+    ".pytest_cache", 
+    ".ruff_cache",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+    "venv",
+]
+
+# Import sorting configuration
+[tool.ruff.lint.isort]
+known-first-party = ["us811"]  # TODO: Update with your package name
+force-single-line = false
+lines-after-imports = 2
+
+# Ruff formatter configuration
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+# pytest configuration
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = [
+    "-ra",                        # Show summary of all test outcomes
+    "-q",                         # Quiet output
+    "--strict-markers",           # Treat unknown markers as errors
+    "--strict-config",            # Treat config issues as errors
+]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+
