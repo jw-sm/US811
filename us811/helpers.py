@@ -2,50 +2,14 @@ import csv
 import math
 import os
 import re
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import requests
 from dotenv import load_dotenv
 from geopy.distance import geodesic
+from models.pole import Pole
 from normalize import normalize
-
-
-@dataclass
-class Pole:
-    # -----------------------
-    pole_number: str
-    lon: float
-    lat: float
-    # -----------------------
-    dig_lon: Optional[float] = None
-    dig_lat: Optional[float] = None
-    dig_street: Optional[str] = None
-    # -----------------------
-    inter_lon_point: Optional[float] = None
-    inter_lat_point: Optional[float] = None
-    # -----------------------
-    intersection_lon: Optional[float] = None
-    intersection_lat: Optional[float] = None
-    intersection: Optional[str] = None
-    int_to_dig: Optional[int] = None
-    dig_to_pole: Optional[int] = None
-    # -----------------------
-    int_to_dig_dir: Optional[str] = None
-    dig_to_pole_dir: Optional[str] = None
-    verbiage: Optional[str] = None
-
-    def __repr__(self):
-        return (
-            f"Pole(pole_number={self.pole_number!r}, lon={self.lon}, lat={self.lat}, "
-            f"dig_lon={self.dig_lon}, dig_lat={self.dig_lat}, dig_street={self.dig_street!r}, "
-            f"inter_lon_point={self.inter_lon_point}, inter_lat_point={self.inter_lat_point}, "
-            f"intersection_lon={self.intersection_lon}, intersection_lat={self.intersection_lat}, "
-            f"intersection={self.intersection!r}, int_to_dig={self.int_to_dig}, "
-            f"dig_to_pole={self.dig_to_pole}, int_to_dig_dir={self.int_to_dig_dir!r}, "
-            f"dig_to_pole_dir={self.dig_to_pole_dir!r}, verbiage={self.verbiage!r})"
-        )
 
 
 env_path = Path(__file__).resolve().parent.parent / ".env"
@@ -92,39 +56,17 @@ def tilequery(pole: Pole) -> Pole:
         enriched Pole object with street information
     Raises:
     """
-    params: dict[str, str | Any] = {
-        "radius": 500,
-        "limit": 15,
-        "geometry": "linestring",
-        "dedupe": False,
-        "types": "street",
-        "layers": "road",
-        "access_token": api_key,
-    }
+    params = mapbox_params(api_key)
+
     base_url = f"https://api.mapbox.com/v4/mapbox.mapbox-streets-v8/tilequery/{pole.lon},{pole.lat}.json"
     response = requests.get(base_url, params=params)
     response_data = response.json()
 
-    # Get all valid streets with names/refs
-    valid_streets = []
-    seen_names = set()
-
     all_features = response_data.get("features", [])
     print(f"Processing {len(all_features)} features from API")
 
-    """
-    # First, let's see all features for debugging
-    for i, item in enumerate(all_features):
-        if isinstance(item, dict):
-            props = item.get("properties", {})
-            street_class = props.get("class")
-            name = props.get("name")
-            ref = props.get("ref")
-            feature_id = item.get("id")
-            print(
-                f"Feature {i} (id: {feature_id}): class='{street_class}', name='{name}', ref='{ref}'"
-            )
-    """
+    valid_streets = []
+    seen_names = set()
 
     # Priority order: streets with names, streets with refs, primary with names, primary with refs
     search_priorities = [
@@ -203,6 +145,18 @@ def tilequery(pole: Pole) -> Pole:
 
     return pole
 
+# Hardcoding parameters except api_key, as these parameters won't change for both PR/PIT
+def mapbox_params(api_key: str) -> dict[str, str | Any]:
+    params: dict[str, str | Any] = {
+    "radius": 500,
+    "limit": 15,
+    "geometry": "linestring",
+    "dedupe": False,
+    "types": "street",
+    "layers": "road",
+    "access_token": api_key,
+    }
+    return params
 
 # https://api.mapbox.com/directions/v5/{profile}/{coordinates}
 def directions(pole: Pole) -> dict:
