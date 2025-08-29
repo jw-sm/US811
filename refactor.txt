@@ -1,39 +1,20 @@
-# Refactoring guide / mini docs
-/us811/us811/helpers.py
-
-## Purpose
-    - This tool can automate/generate a finished verbiage for Pole Restoration type of work using US811 portals 
-    - Used by company as an internal tool to avoid manual work (from 5-6 hours of manual work into 10-20 seconds)
-    Input: structnum,lot,lan
-    output: a complete verbiage with the ff:
-        - street name
-        - intersection name
-        - distance from intersection to a point nearest to the given gps coordinate
-        - distance from poin in the street perpendicular to the given gps coordinate
-        - a full verbiage ready to be submitted through various 811 portals
-    
-## Key functions (as of now, before refactoring this monolith clusterfuck)
-
-parse_csv(): file path str -> convert into dict then to a list of Poles -> returns list[Poles]
-
-tilequery(): single Pole object -> enrich the Pole object with necessary data -> return the a single Pole object
-
-    core logic:
-        - submits a request to tilequery API
-        - get the features list from the response
-        - iterate through the list and check if its an instance of a dict
-        - get the "properties" dict of the current item
-        - get the value of the key "class", "name", "ref", and "id" of the current item
-            - print the values for debugging
-        - define a search priority using list of tuples where the first priority is
-        priority order: streets with names, streets with refs, primary with names, primary with refs
-        - loop through the search priorities
-        - check if the list of valid streets is >= 2 (only 2 streets are needed)
-                - if not, handle it!!!
-        -  loop through features list
-                - if instance is dict and class type inside is == class_type of in search priorites
-                - get the "properties" dict of the current item
-                - get the the identifier by querying w/ identifier_type
-                - get the feature id (for debugging purposes)
-        - if identifer
-        
+112361,35.583915,-97.460271
+112381,35.585513,-97.460391
+112351,35.585463,-97.46024
+112380,35.583865,-97.459741
+112354,35.585424,-97.457127
+111940,35.585207,-97.456061
+111928,35.585205,-97.455457
+111934,35.585395,-97.455455
+241022,35.589659,-97.460692
+240967,35.591294,-97.460532
+112116,35.59212,-97.456395
+112114,35.592498,-97.456461
+112323,35.5946,-97.45847
+111746,35.596785,-97.453381
+111937,35.58409,-97.451435
+111924,35.586488,-97.45149
+112136,35.586395,-97.448973
+112161,35.593612,-97.451639
+111704,35.595697,-97.447296
+111705,35.596553,-97.447268

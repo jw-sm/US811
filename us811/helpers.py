@@ -2,6 +2,7 @@ import csv
 import math
 import os
 import re
+import json
 from pathlib import Path
 from typing import Any
 
@@ -63,7 +64,8 @@ def tilequery(pole: Pole) -> Pole:
     response_data = response.json()
 
     all_features = response_data.get("features", [])
-    print(f"Processing {len(all_features)} features from API")
+    
+    print(f"Processing {len(all_features)} features from API....structnum={pole.pole_number}")
 
     valid_streets = []
     seen_names = set()
@@ -108,6 +110,8 @@ def tilequery(pole: Pole) -> Pole:
 
     print(f"Final count: {len(valid_streets)} valid streets")
 
+    if len(valid_streets) != 2:
+        return pole
     # Extract coordinates and names
     if len(valid_streets) >= 1:
         geometry = valid_streets[0].get("geometry", {})
@@ -145,18 +149,20 @@ def tilequery(pole: Pole) -> Pole:
 
     return pole
 
+
 # Hardcoding parameters except api_key, as these parameters won't change for both PR/PIT
 def mapbox_params(api_key: str) -> dict[str, str | Any]:
     params: dict[str, str | Any] = {
-    "radius": 500,
-    "limit": 15,
-    "geometry": "linestring",
-    "dedupe": False,
-    "types": "street",
-    "layers": "road",
-    "access_token": api_key,
+        "radius": 1000,
+        "limit": 25, 
+        "geometry": "linestring",
+        "dedupe": False,
+        "types": "street",
+        "layers": "road",
+        "access_token": api_key,
     }
     return params
+
 
 # https://api.mapbox.com/directions/v5/{profile}/{coordinates}
 def directions(pole: Pole) -> dict:
@@ -170,6 +176,15 @@ def directions(pole: Pole) -> dict:
 
 
 def distance_from_inter_to_dig(pole: Pole) -> Pole:
+    if not all([
+    pole.inter_lon_point,
+    pole.inter_lat_point,
+    pole.dig_lon,
+    pole.dig_lat
+    ]):
+        print(f"⚠️ Missing coordinates for pole {pole.pole_number}; skipping directions API")
+        return pole
+    
     response_data = directions(pole)
     route = response_data["routes"][0]
     legs = route["legs"]
@@ -283,7 +298,7 @@ def distance_from_inter_to_dig(pole: Pole) -> Pole:
                         pole.dig_lon,
                     )
                 return pole
-
+    return pole
 
 def distance_feet(lat1: float, lon1: float, lat2: float, lon2: float) -> int:
     point1 = (lat1, lon1)
@@ -326,18 +341,11 @@ def print_poles_to_file(poles, filename="poles_output.txt"):
 
         for pole in poles:
             all_poles_info += f"""==================
+POLE RESTORATION. PLEASE MARK A 3 FT RADIUS AROUND UTILITY POLE. WE WILL BE DIGGING TO A DEPTH OF 36 IN AND THEN DRIVING A PIECE OF STEEL ANOTHER 24 IN. POLE IS MARKED WITH WHITE RIBBON AND YELLOW FLAG. PLEASE MARK ALL LINES AND RISER
 
-POLE RESTORATION
-HAND DIGGING...
+POLE IS APPROX {pole.int_to_dig} FT {pole.int_to_dig_dir} OF {pole.intersection} AND APPROX {pole.dig_to_pole} FT {pole.dig_to_pole_dir} OF {pole.dig_street}
 
-FROM THE INTERSECTION, POLE IS APPROX {pole.int_to_dig} FT {pole.int_to_dig_dir}
-OF {pole.intersection} AND APPROX {pole.dig_to_pole} FT {pole.dig_to_pole_dir} OF {pole.dig_street}
-
-
-POLE MARKINGS....
-
-STRUCTNUM: {pole.pole_number}
-GPS: {pole.lat},{pole.lon}
+GPS: {pole.lat} {pole.lon}
 ==================
 
 """
@@ -346,14 +354,14 @@ GPS: {pole.lat},{pole.lon}
 
 
 if __name__ == "__main__":
-    poles = parse_csv("../tests/unit/del.csv")
+    poles = parse_csv("../tests/unit/mesia48.csv")
     final_poles = []
     for pole in poles:
         enriched_pole = tilequery(pole)
         final_pole = distance_from_inter_to_dig(enriched_pole)
         final_poles.append(final_pole)
 
-    print_poles_to_file(final_poles, "processed_poles_output.txt")
+    print_poles_to_file(final_poles, "mesia48.txt")
     print(
-        f"All {len(final_poles)} processed poles have been written to 'processed_poles_output.txt'!"
+        f"All {len(final_poles)} processed poles have been written to 'mesia48.txt'!"
     )
