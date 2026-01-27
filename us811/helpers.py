@@ -114,7 +114,7 @@ def tilequery(pole: Pole) -> Pole:
 
     if len(valid_streets) != 2:
         return pole
-    # Extract coordinates and names
+    
     if len(valid_streets) >= 1:
         geometry = valid_streets[0].get("geometry", {})
         coords = geometry.get("coordinates")
@@ -196,11 +196,10 @@ def distance_from_inter_to_dig(pole: Pole) -> Pole:
         print(f"Found {len(steps)} steps in directions")
 
         for i, step in enumerate(steps):
-            # Get both name and ref, similar to the street finding logic
+            
             step_name = step.get("name", "")
             step_ref = step.get("ref", "")
 
-            # Use name or ref, prioritizing name if available
             step_identifier = step_name or step_ref
             normalized_step_identifier = normalize(step_identifier)
 
@@ -211,26 +210,26 @@ def distance_from_inter_to_dig(pole: Pole) -> Pole:
             # Try multiple matching strategies
             is_match = False
 
-            # Strategy 1: Exact match
+            # s1 exact match
             if normalized_step_identifier == pole.dig_street:
                 print(f"  ✓ EXACT MATCH at step {i}")
                 is_match = True
 
-            # Strategy 2: Check if dig_street is contained in step identifier
+            # s2
             elif pole.dig_street in normalized_step_identifier:
                 print(
                     f"  ✓ CONTAINS MATCH at step {i} ('{pole.dig_street}' in '{normalized_step_identifier}')"
                 )
                 is_match = True
 
-            # Strategy 3: Check if step identifier is contained in dig_street
+            # s3
             elif normalized_step_identifier in pole.dig_street:
                 print(
                     f"  ✓ REVERSE CONTAINS MATCH at step {i} ('{normalized_step_identifier}' in '{pole.dig_street}')"
                 )
                 is_match = True
 
-            # Strategy 4: For ref codes like E0960, try matching the number part
+            # s4 For ref codes like E0960, try matching the number part
             elif re.match(r"[NSEW]\d+", pole.dig_street):
                 # Extract direction and number from dig_street (e.g., "E0960" -> "E", "0960")
                 dig_match = re.match(r"([NSEW])(\d+)", pole.dig_street)
