@@ -10,6 +10,9 @@
   </h3>
 </div>
 
+## Note
+This project is currently incomplete/unfinished. This is meant for personal use for automating 811 ticket submission.
+
 
 
 
