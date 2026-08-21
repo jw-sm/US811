@@ -29,7 +29,7 @@ class MapboxClient:
 
     @classmethod
     def from_env(cls, env_path: Optional[Path] = None) -> "MapboxClient":
-        env_path = env_path or Path(__file__).resolve().parent / ".env"
+        env_path = env_path or Path(__file__).resolve().parent.parent / ".env"
         load_dotenv(dotenv_path=env_path)
         return cls(os.getenv("API_KEY"))
 
