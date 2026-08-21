@@ -10,6 +10,9 @@ def get_streetnames(pole: Pole) -> Pole:
     params = mapbox_params(api_key)
 
     base_url = f"https://api.mapbox.com/v4/mapbox.mapbox-streets-v8/tilequery/{pole.lon},{pole.lat}.json"
+    response = requests.get(base_url, params=params)
+    response_data = response.json()
+
 
 
 def mapbox_params(api_key: str) -> dict[str, str | Any]:
