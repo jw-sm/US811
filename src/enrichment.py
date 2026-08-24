@@ -16,13 +16,15 @@ _SEARCH_PRIORITIES = [
 
 class PoleEnricher:
     """
-    Orchestrates the two-call Mapbox pipeline for a single Pole:
-      1. tilequery -> nearest two streets (dig street + intersection street)
-      2. directions -> real routed distance from intersection to the dig point
+    Handles the Mapbox enrichment process for a single Pole.
 
-    This is a class (not free functions) because every step needs the same
-    MapboxClient, and because "enrich a pole" is naturally a sequence of
-    dependent operations you call together, not independent utilities.
+    The enrichment uses two Mapbox calls: tilequery to find the two
+    nearest streets, followed by directions to calculate the actual
+    routed distance between the intersection and the dig point.
+
+    This is kept as a class since all of the operations share the same
+    MapboxClient and the enrichment steps depend on the results of the
+    previous steps.
     """
 
     def __init__(self, client: MapboxClient):
@@ -33,10 +35,19 @@ class PoleEnricher:
         self._measure_intersection_to_dig(pole)
         return pole
 
-    # -- step 1: nearest streets -------------------------------------------------
+    # -- step 1: find the nearest streets -------------------------------------------------
 
     def _find_nearby_streets(self, pole: Pole) -> Pole:
+        """
+        Look through the Mapbox results according to the priority order and pick
+        the first two streets
+
+        this internal method will be called by enrih
+        """
+
+        # refer to MapboxClient tilequery method src/mapbox_client.py
         data = self.client.tilequery(pole.longitude, pole.latitude)
+        # "features" contains all the street names that are needed
         all_features = data.get("features", [])
 
         valid_streets = self._select_two_streets(all_features)
@@ -50,6 +61,9 @@ class PoleEnricher:
 
     @staticmethod
     def _select_two_streets(features: list[dict]) -> list[dict]:
+        """
+        Returns 2 valid streets found, based on _SEARCH_PRIORITIES
+        """
         valid_streets: list[dict] = []
         seen_names: set[str] = set()
 
